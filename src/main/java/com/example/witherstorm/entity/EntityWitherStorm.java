@@ -13,6 +13,7 @@ import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.boss.IBossDisplayData;
 import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Items;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.AxisAlignedBB;
@@ -26,9 +27,12 @@ import net.minecraft.world.World;
 import com.example.witherstorm.WitherStormMod;
 import com.example.witherstorm.ability.AbilityManager;
 import com.example.witherstorm.absorb.BlockAbsorber;
+import com.example.witherstorm.absorb.StormChunkLoader;
 import com.example.witherstorm.config.StormConfig;
 import com.example.witherstorm.evolution.EvolutionData;
 import com.example.witherstorm.evolution.EvolutionFormulas;
+import com.example.witherstorm.network.NetworkHandler;
+import com.example.witherstorm.network.PacketGhost;
 
 public class EntityWitherStorm extends EntityLiving implements IMob, IBossDisplayData {
     /** 1 pixel do modelo = 0.1 bloco (na escala 1). */
@@ -62,6 +66,7 @@ public class EntityWitherStorm extends EntityLiving implements IMob, IBossDispla
 
     private final BlockAbsorber absorber;
     private final AbilityManager abilities;
+    private final StormChunkLoader chunkLoader = new StormChunkLoader();
     private EntityLivingBase target;
     private Vec3 roamDest;
     private int roamUntil;
@@ -75,7 +80,7 @@ public class EntityWitherStorm extends EntityLiving implements IMob, IBossDispla
     public EntityWitherStorm(World world) {
         super(world);
         this.isImmuneToFire = true;
-        this.noClip = true; // voa atraves do terreno, que ele proprio absorve (evita colisao enorme)
+        this.noClip = StormConfig.passThroughBlocks; // por padrao COLIDE com blocos e abre caminho absorvendo-os
         this.ignoreFrustumCheck = true;
         this.experienceValue = 500;
         this.renderDistanceWeight = 50.0D;
@@ -297,6 +302,37 @@ public class EntityWitherStorm extends EntityLiving implements IMob, IBossDispla
         abilities.tick(target);
         steer();
         syncFlags();
+        chunkLoader.update(this);
+        if (ticksExisted % StormConfig.ghostInterval == 0) sendGhosts();
+    }
+
+    /** Envia posicao/escala a jogadores distantes, para o Storm continuar visivel fora do alcance de rastreio. */
+    private void sendGhosts() {
+        double r = StormConfig.ghostRange;
+        if (r <= 0) return;
+        r *= r;
+        PacketGhost pkt = new PacketGhost(getEntityId(), posX, posY, posZ, rotationYaw, getRenderScale(), getStage(), getFlags());
+        for (EntityPlayer p : worldObj.playerEntities) {
+            if (!(p instanceof EntityPlayerMP)) continue;
+            double dx = p.posX - posX, dz = p.posZ - posZ;
+            if (dx * dx + dz * dz <= r) NetworkHandler.CHANNEL.sendTo(pkt, (EntityPlayerMP) p);
+        }
+    }
+
+    @Override
+    public void setDead() {
+        if (!worldObj.isRemote) chunkLoader.release();
+        super.setDead();
+    }
+
+    /** Cliente: sincroniza uma copia "fantasma" (nao adicionada ao mundo) usada so para desenhar. */
+    public void ghostSync(float scale, int stage, int flags, float yaw) {
+        this.dataWatcher.updateObject(DW_SCALE, Float.valueOf(scale));
+        this.dataWatcher.updateObject(DW_STAGE, Integer.valueOf(stage));
+        this.dataWatcher.updateObject(DW_FLAGS, Byte.valueOf((byte) flags));
+        applyHitbox(scale, true);
+        smoothScale = prevSmoothScale = scale;
+        rotationYaw = prevRotationYaw = yaw;
     }
 
     public boolean isValidTarget(EntityLivingBase e, double range) {
@@ -412,11 +448,11 @@ public class EntityWitherStorm extends EntityLiving implements IMob, IBossDispla
             rotationYawHead = rotationYaw;
         }
         // evita ficar preso: se nao saiu do lugar, escolhe outra area
-        if (ticksExisted % 40 == 0) {
+        if (ticksExisted % 20 == 0) {
             double mx = posX - lastX, my = posY - lastY, mz = posZ - lastZ;
             if (dest != null && target == null && mx * mx + my * my + mz * mz < 0.25) stuckCount++;
             else stuckCount = 0;
-            if (stuckCount >= 3) {
+            if (stuckCount >= 5) {
                 pickRoam();
                 absorber.clearFocus();
                 stuckCount = 0;

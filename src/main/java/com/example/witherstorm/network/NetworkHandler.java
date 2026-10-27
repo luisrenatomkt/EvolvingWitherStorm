@@ -12,5 +12,6 @@ public final class NetworkHandler {
     public static void init() {
         CHANNEL = NetworkRegistry.INSTANCE.newSimpleChannel("witherstorm");
         CHANNEL.registerMessage(PacketAbsorb.Handler.class, PacketAbsorb.class, 0, Side.CLIENT);
+        CHANNEL.registerMessage(PacketGhost.Handler.class, PacketGhost.class, 1, Side.CLIENT);
     }
 }

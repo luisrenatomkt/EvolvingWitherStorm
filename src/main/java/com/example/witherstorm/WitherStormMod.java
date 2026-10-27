@@ -1,5 +1,9 @@
 package com.example.witherstorm;
 
+import java.util.List;
+
+import net.minecraft.world.World;
+import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.SidedProxy;
@@ -34,6 +38,13 @@ public class WitherStormMod {
         EntityRegistry.registerModEntity(EntityWitherStorm.class, "WitherStorm", 0, this, 256, 2, true);
         EntityRegistry.registerModEntity(EntityStormSkull.class, "StormSkull", 1, this, 160, 1, true);
         NetworkHandler.init();
+        ForgeChunkManager.setForcedChunkLoadingCallback(this, new ForgeChunkManager.LoadingCallback() {
+            @Override
+            public void ticketsLoaded(List<ForgeChunkManager.Ticket> tickets, World world) {
+                // tickets nao persistem: o Storm pede um novo ao carregar
+                for (ForgeChunkManager.Ticket t : tickets) ForgeChunkManager.releaseTicket(t);
+            }
+        });
         MinecraftForge.EVENT_BUS.register(new StormEvents());
         proxy.preInit();
     }

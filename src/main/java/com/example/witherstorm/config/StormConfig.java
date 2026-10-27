@@ -20,6 +20,9 @@ public final class StormConfig {
     public static int maxNetherStarDrops;
 
     // ---- crescimento
+    public static boolean passThroughBlocks, keepChunksLoaded;
+    public static int frontSamplesPerTick, ghostInterval, keptChunkRadius;
+    public static double ghostRange;
     public static double massUnit, scaleCoeff, scaleExp, stageMass, maxLogicalScale, maxHitboxScale, maxRenderScale, maxMass;
 
     // ---- poder evolutivo
@@ -109,7 +112,8 @@ public final class StormConfig {
         scaleExp = d(c, "scaleExp", 0.5, 0.05, 2, "Expoente da formula de escala.");
         stageMass = d(c, "stageMass", 500, 1, 1e12, "Estagio visual = floor(log2(1 + massa/stageMass)). Estagios sao marcos, nao limites.");
         maxLogicalScale = d(c, "maxLogicalScale", 1e6, 1, 1e9, "Limite de seguranca numerica da escala logica.");
-        maxHitboxScale = d(c, "maxHitboxScale", 20, 1, 200, "Limite da escala da caixa de colisao (acima disso so o logico/visual cresce).");
+        maxHitboxScale = d(c, "maxCollisionScale", 10, 1, 200, "Limite da escala da caixa de colisao (acima disso so o logico/visual cresce). Maior = mais pesado.");
+        passThroughBlocks = b(c, "passThroughBlocks", false, "Se true, o Storm atravessa blocos (noClip). Padrao: colide e abre caminho comendo os blocos.");
         maxRenderScale = d(c, "maxRenderScale", 40, 1, 400, "Limite da escala visual (render). Acima disso crescem tentaculos/alcance, nao o modelo.");
         maxMass = d(c, "maxMass", 1e18, 1e3, 1e30, "Limite de seguranca contra overflow da massa (avisa no log se atingido).");
 
@@ -159,6 +163,7 @@ public final class StormConfig {
         scanSamples = i(s, "scanSamples", 200, 10, 5000, "Amostras por busca de area.");
         invalidCacheSize = i(s, "invalidCacheSize", 8192, 128, 1000000, "Cache de posicoes ja rejeitadas.");
         maxVisualBlocksPerTick = i(s, "maxVisualBlocksPerTick", 6, 0, 64, "Blocos animados (pacotes) por tick.");
+        frontSamplesPerTick = i(s, "frontSamplesPerTick", 32, 0, 512, "Amostras por tick por eixo para achar blocos que bloqueiam o caminho.");
         fastAbsorbDuration = i(s, "fastAbsorbDurationTicks", 200, 20, 6000, "");
         fastAbsorbMultiplier = d(s, "fastAbsorbMultiplier", 3.0, 1, 20, "");
         baseBlockMass = d(s, "baseBlockMass", 1.0, 0.001, 1e6, "massa = base * (0.5 + dureza do bloco), salvo override.");
@@ -205,6 +210,11 @@ public final class StormConfig {
         maxExplosionsPerTick = i(h, "maxExplosionsPerTick", 4, 1, 32, "");
         maxAbilityTargets = i(h, "maxAbilityTargets", 24, 1, 256, "Alvos maximos por habilidade de area.");
         bombardMax = i(h, "maxBombardSkulls", 24, 1, 128, "");
+
+        ghostRange = d("visibility", "ghostRangeBlocks", 2048, 0, 30000, "Alcance dos pacotes de posicao que mantem o Storm visivel mesmo fora do alcance normal de rastreio.");
+        ghostInterval = i("visibility", "ghostIntervalTicks", 5, 1, 40, "Intervalo dos pacotes de posicao.");
+        keepChunksLoaded = b("visibility", "keepChunksLoaded", true, "Mantem chunks ao redor do Storm carregados (ticket do Forge), para ele nao congelar longe do jogador.");
+        keptChunkRadius = i("visibility", "keptChunkRadius", 2, 0, 2, "Raio (em chunks) mantido carregado. Maximo 2 por limite padrao do ForgeChunkManager (25 chunks por ticket).");
 
         maxParticlesPerTick = i("client", "maxParticlesPerTick", 6, 0, 64, "Particulas ambiente por tick por Storm.");
 

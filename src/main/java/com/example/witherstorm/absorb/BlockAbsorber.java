@@ -49,7 +49,8 @@ public class BlockAbsorber {
         return !queue.isEmpty();
     }
 
-        private static boolean valid(BlockPos p) {
+    /** World.isValid e privado no 1.8.9: verifica altura e limites do mundo manualmente. */
+    private static boolean valid(BlockPos p) {
         return p.getY() >= 0 && p.getY() < 256
                 && Math.abs(p.getX()) < 30000000 && Math.abs(p.getZ()) < 30000000;
     }
@@ -65,6 +66,37 @@ public class BlockAbsorber {
         if (queued.contains(k) || rejected.contains(k)) return;
         queue.add(p);
         queued.add(k);
+    }
+
+    private void enqueueFirst(BlockPos p) {
+        long k = p.toLong();
+        if (queued.contains(k) || rejected.contains(k)) return;
+        if (queue.size() >= StormConfig.queueCapacity) queue.pollLast();
+        queue.addFirst(p);
+        queued.add(k);
+    }
+
+    /** Blocos que estao no caminho (a frente de cada eixo em movimento) ganham prioridade: o Storm abre caminho comendo. */
+    private void sampleFront(World w) {
+        int n = StormConfig.frontSamplesPerTick;
+        if (n <= 0) return;
+        AxisAlignedBB bb = storm.getEntityBoundingBox();
+        double[] m = { storm.motionX, storm.motionY, storm.motionZ };
+        for (int axis = 0; axis < 3; axis++) {
+            if (Math.abs(m[axis]) < 0.02) continue;
+            double dir = m[axis] > 0 ? 1 : -1;
+            for (int i = 0; i < n; i++) {
+                double x = bb.minX + rand.nextDouble() * (bb.maxX - bb.minX);
+                double y = bb.minY + rand.nextDouble() * (bb.maxY - bb.minY);
+                double z = bb.minZ + rand.nextDouble() * (bb.maxZ - bb.minZ);
+                double off = 0.3 + rand.nextDouble() * 0.9;
+                if (axis == 0) x = dir > 0 ? bb.maxX + off : bb.minX - off;
+                else if (axis == 1) y = dir > 0 ? bb.maxY + off : bb.minY - off;
+                else z = dir > 0 ? bb.maxZ + off : bb.minZ - off;
+                BlockPos p = new BlockPos(MathHelper.floor_double(x), MathHelper.floor_double(y), MathHelper.floor_double(z));
+                if (valid(p) && w.isBlockLoaded(p) && !w.isAirBlock(p)) enqueueFirst(p);
+            }
+        }
     }
 
     public void tick(boolean boost) {
@@ -84,6 +116,7 @@ public class BlockAbsorber {
         if (focus != null && inReach(focus, c, reachSq)) enqueue(focus);
 
         sample(w, c, reach);
+        sampleFront(w);
 
         int budget = (int) Math.min(StormConfig.maxBlocksPerTick,
                 Math.ceil(storm.stats.blocksPerTick * (boost ? StormConfig.fastAbsorbMultiplier : 1.0)));
@@ -140,12 +173,12 @@ public class BlockAbsorber {
         }
         // destroi obstaculos dentro do proprio corpo
         AxisAlignedBB bb = storm.getEntityBoundingBox();
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 12; i++) {
             BlockPos p = new BlockPos(
                     MathHelper.floor_double(bb.minX + rand.nextDouble() * (bb.maxX - bb.minX)),
                     MathHelper.floor_double(bb.minY + rand.nextDouble() * (bb.maxY - bb.minY)),
                     MathHelper.floor_double(bb.minZ + rand.nextDouble() * (bb.maxZ - bb.minZ)));
-            if (valid(p) && w.isBlockLoaded(p) && !w.isAirBlock(p)) enqueue(p);
+            if (valid(p) && w.isBlockLoaded(p) && !w.isAirBlock(p)) enqueueFirst(p);
         }
     }
 
