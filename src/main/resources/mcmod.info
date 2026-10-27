@@ -1,0 +1,15 @@
+[
+{
+  "modid": "witherstorm",
+  "name": "Evolving Wither Storm",
+  "description": "Transforma o Wither numa criatura evolutiva inspirada no Wither Storm. Absorve blocos para crescer e evolui ao matar com seus projeteis.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "authorList": [],
+  "credits": "",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
