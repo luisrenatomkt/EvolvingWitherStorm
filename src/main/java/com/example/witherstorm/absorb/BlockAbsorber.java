@@ -49,6 +49,11 @@ public class BlockAbsorber {
         return !queue.isEmpty();
     }
 
+        private static boolean valid(BlockPos p) {
+        return p.getY() >= 0 && p.getY() < 256
+                && Math.abs(p.getX()) < 30000000 && Math.abs(p.getZ()) < 30000000;
+    }
+
     private boolean inReach(BlockPos p, Vec3 c, double reachSq) {
         double dx = p.getX() + 0.5 - c.xCoord, dy = p.getY() + 0.5 - c.yCoord, dz = p.getZ() + 0.5 - c.zCoord;
         return dx * dx + dy * dy + dz * dz <= reachSq;
@@ -86,7 +91,7 @@ public class BlockAbsorber {
         while (absorbed < budget && attempts-- > 0 && !queue.isEmpty()) {
             BlockPos p = queue.pollFirst();
             queued.remove(p.toLong());
-            if (!w.isValid(p) || !w.isBlockLoaded(p) || !inReach(p, c, reachSq)) continue;
+            if (!valid(p) || !w.isBlockLoaded(p) || !inReach(p, c, reachSq)) continue;
             IBlockState s = w.getBlockState(p);
             double mass = BlockMassRegistry.massOf(w, p, s);
             if (mass <= 0) {
@@ -106,7 +111,7 @@ public class BlockAbsorber {
                 }
                 for (EnumFacing f : EnumFacing.values()) {
                     BlockPos n = p.offset(f);
-                    if (w.isValid(n) && w.isBlockLoaded(n) && !w.isAirBlock(n) && inReach(n, c, reachSq)) enqueue(n);
+                    if (valid(n) && w.isBlockLoaded(n) && !w.isAirBlock(n) && inReach(n, c, reachSq)) enqueue(n);
                 }
             }
         }
@@ -130,7 +135,7 @@ public class BlockAbsorber {
                         MathHelper.floor_double(c.yCoord + r * Math.cos(phi)),
                         MathHelper.floor_double(c.zCoord + r * Math.sin(phi) * Math.sin(theta)));
             }
-            if (!w.isValid(p) || !w.isBlockLoaded(p) || w.isAirBlock(p)) continue;
+            if (!valid(p) || !w.isBlockLoaded(p) || w.isAirBlock(p)) continue;
             enqueue(p);
         }
         // destroi obstaculos dentro do proprio corpo
@@ -140,7 +145,7 @@ public class BlockAbsorber {
                     MathHelper.floor_double(bb.minX + rand.nextDouble() * (bb.maxX - bb.minX)),
                     MathHelper.floor_double(bb.minY + rand.nextDouble() * (bb.maxY - bb.minY)),
                     MathHelper.floor_double(bb.minZ + rand.nextDouble() * (bb.maxZ - bb.minZ)));
-            if (w.isValid(p) && w.isBlockLoaded(p) && !w.isAirBlock(p)) enqueue(p);
+            if (valid(p) && w.isBlockLoaded(p) && !w.isAirBlock(p)) enqueue(p);
         }
     }
 
